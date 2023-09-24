@@ -40,23 +40,20 @@ func FilesOrStdin(args []string, readerHandler func(io.Reader) error) error {
 	}
 }
 
-func wordifyInternal(reader *bufio.Reader, wordFunc func(string) error) error {
+func linifyInternal(reader *bufio.Reader, lineFunc func(string, int) error) error {
 	fullString := ""
+	lineCount := 1
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if err == nil {
 			fullString += string(line)
 			if !isPrefix {
-				results := wordPattern.FindAllStringSubmatch(string(fullString), -1)
-				for index := range results {
-					for _, word := range results[index][1:] {
-						err := wordFunc(word)
-						if err != nil {
-							return err
-						}
-					}
+				err := lineFunc(fullString, lineCount)
+				if err != nil {
+					return err
 				}
 				fullString = ""
+				lineCount++
 			}
 		} else if err == io.EOF {
 			return nil
@@ -64,6 +61,25 @@ func wordifyInternal(reader *bufio.Reader, wordFunc func(string) error) error {
 			return err
 		}
 	}
+}
+
+func Linify(r io.Reader, lineFunc func(string, int) error) error {
+	return linifyInternal(bufio.NewReader(r), lineFunc)
+}
+
+func wordifyInternal(reader *bufio.Reader, wordFunc func(string) error) error {
+	return linifyInternal(reader, func(line string, count int) error {
+		results := wordPattern.FindAllStringSubmatch(string(line), -1)
+		for index := range results {
+			for _, word := range results[index][1:] {
+				err := wordFunc(word)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
 }
 
 func Wordify(r io.Reader, wordFunc func(string) error) error {
