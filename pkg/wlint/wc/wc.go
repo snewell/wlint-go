@@ -1,11 +1,8 @@
 package wc
 
 import (
-	"bufio"
 	"fmt"
 	"io"
-	"log"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -16,8 +13,6 @@ import (
 )
 
 var (
-	wordPattern *regexp.Regexp
-
 	caseSensitive bool
 
 	wordCountCmd = &cobra.Command{
@@ -29,32 +24,22 @@ var (
 	}
 )
 
-const (
-	rightSingleQuote string = "’"
-)
+func identityString(s string) string {
+	return s
+}
 
-func countWords(r io.Reader) (map[string]int, int, error) {
-	reader := bufio.NewReader(r)
+func countWords(r io.Reader, mapFn func(string) string) (map[string]int, int, error) {
 	ret := map[string]int{}
 	totalCount := 0
-	for {
-		line, _, err := reader.ReadLine()
-		if err == nil {
-			results := wordPattern.FindAllStringSubmatch(string(line), -1)
-			for index := range results {
-				for _, word := range results[index][1:] {
-					if !caseSensitive {
-						word = strings.ToLower(word)
-					}
-					ret[word]++
-					totalCount++
-				}
-			}
-		} else if err == io.EOF {
-			return ret, totalCount, nil
-		} else {
-			return nil, 0, err
-		}
+	err := wlint.Wordify(r, func(word string) error {
+		ret[mapFn(word)]++
+		totalCount++
+		return nil
+	})
+	if err != nil {
+		return nil, 0, err
+	} else {
+		return ret, totalCount, nil
 	}
 }
 
@@ -65,10 +50,16 @@ func combineCounts(lhs *map[string]int, rhs *map[string]int) {
 }
 
 func countWordsCmd(args []string) error {
+	// start with the identity string
+	mapFn := identityString
+	if caseSensitive {
+		mapFn = strings.ToLower
+	}
+
 	totalWords := map[string]int{}
 	totalCount := 0
 	err := wlint.FilesOrStdin(args, func(r io.Reader) error {
-		counts, localCount, err := countWords(r)
+		counts, localCount, err := countWords(r, mapFn)
 		if err != nil {
 			return err
 		}
@@ -89,13 +80,6 @@ func countWordsCmd(args []string) error {
 }
 
 func init() {
-	var err error
-
-	wordPattern, err = regexp.Compile(fmt.Sprintf(`\b([\w\-\'%v]+)\b`, rightSingleQuote))
-	if err != nil {
-		log.Fatalf("Error compiling word count regex: %v", err)
-	}
-
 	wordCountCmd.PersistentFlags().BoolVarP(&caseSensitive, "case-sensitive", "s", false, "Treat words as case sensitive")
 	cmd.AddCommand(wordCountCmd)
 }

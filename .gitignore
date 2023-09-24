@@ -1,2 +1,4 @@
-wlint
+coverage.html
+coverage.out
+/wlint
 
