@@ -1,7 +1,6 @@
 package filter
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -33,19 +32,16 @@ func loadWordList(filename string) ([]string, error) {
 	}
 	defer f.Close()
 	ret := []string{}
-	reader := bufio.NewReader(f)
-	for {
-		line, _, err := reader.ReadLine()
-		if err == nil {
-			if len(line) > 0 && line[0] != '#' {
-				ret = append(ret, string(line))
-			}
-		} else if err == io.EOF {
-			return ret, nil
-		} else {
-			return nil, err
+	err = wlint.Linify(f, func(line string, count int) error {
+		if len(line) > 0 && line[0] != '#' {
+			ret = append(ret, string(line))
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
+	return ret, nil
 }
 
 func listFilter(args []string) error {

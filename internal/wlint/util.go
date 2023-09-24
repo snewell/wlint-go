@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"regexp"
 )
@@ -67,8 +66,8 @@ func Linify(r io.Reader, lineFunc func(string, int) error) error {
 	return linifyInternal(bufio.NewReader(r), lineFunc)
 }
 
-func wordifyInternal(reader *bufio.Reader, wordFunc func(string) error) error {
-	return linifyInternal(reader, func(line string, count int) error {
+func Wordify(reader io.Reader, wordFunc func(string) error) error {
+	return Linify(reader, func(line string, count int) error {
 		results := wordPattern.FindAllStringSubmatch(string(line), -1)
 		for index := range results {
 			for _, word := range results[index][1:] {
@@ -82,16 +81,6 @@ func wordifyInternal(reader *bufio.Reader, wordFunc func(string) error) error {
 	})
 }
 
-func Wordify(r io.Reader, wordFunc func(string) error) error {
-	return wordifyInternal(bufio.NewReader(r), wordFunc)
-}
-
 func init() {
-	var err error
-
-	wordPattern, err = regexp.Compile(fmt.Sprintf(`\b([\w\-\'%v]+)\b`, rightSingleQuote))
-	if err != nil {
-		log.Fatalf("Error compiling word marker regex: %v", err)
-	}
-
+	wordPattern = regexp.MustCompile(fmt.Sprintf(`\b([\w\-\'%v]+)\b`, rightSingleQuote))
 }
