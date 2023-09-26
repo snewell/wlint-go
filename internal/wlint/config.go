@@ -1,6 +1,7 @@
 package wlint
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -22,21 +23,20 @@ func GetGlobalConfigPath() (string, string) {
 	return wlintConfigFile, wlintConfigDir
 }
 
-func FindProjectConfig() (string, string, error) {
-	searchDir, err := os.Getwd()
-	if err != nil {
-		return "", "", err
-	}
+func findParentConfigs(startDir string, foundConfigFn func(string, string) error) error {
 	for {
-		possiblePath := path.Join(searchDir, ".wlintrc")
+		possiblePath := path.Join(startDir, ".wlintrc")
 		if _, err := os.Stat(possiblePath); err == nil {
-			return possiblePath, searchDir, nil
+			err := foundConfigFn(possiblePath, startDir)
+			if err != nil {
+				return err
+			}
 		}
-		nextDir := path.Dir(searchDir)
-		if nextDir == searchDir {
-			return "", "", os.ErrNotExist
+		nextDir := path.Dir(startDir)
+		if nextDir == startDir {
+			return nil
 		}
-		searchDir = nextDir
+		startDir = nextDir
 	}
 }
 
@@ -65,32 +65,39 @@ type ConfigInfo[T any] struct {
 	Dir    string
 }
 
-func GetAllConfigs[T any]() (ConfigInfo[T], ConfigInfo[T], error) {
-	// This function is ugly right now :(
-	var globalConfig ConfigInfo[T]
-	var localConfig ConfigInfo[T]
-
-	var configFile string
-	var err error
-	// get global
-	configFile, globalConfig.Dir = GetGlobalConfigPath()
-	globalConfig.Config, err = loadConfig[T](configFile)
+func GetAllConfigs[T any]() ([]ConfigInfo[T], error) {
+	ret := []ConfigInfo[T]{}
+	currentDir, err := os.Getwd()
 	if err != nil {
-		return globalConfig, localConfig, err
-	}
-
-	// get local
-	configFile, localConfig.Dir, err = FindProjectConfig()
-	if err != nil {
-		if os.IsNotExist(err) {
-			// no local config, we're done
-			err = nil
+		fmt.Fprintf(os.Stderr, "Error determining current working directory: %v\n", err)
+	} else {
+		err := findParentConfigs(currentDir, func(configPath string, configDir string) error {
+			config, err := loadConfig[T](configPath)
+			if err != nil {
+				return err
+			}
+			ret = append(ret, ConfigInfo[T]{
+				Config: config,
+				Dir:    configDir,
+			})
+			return nil
+		})
+		if err != nil {
+			return ret, err
 		}
-		// some other error; err hasn't been cleared
-		return globalConfig, localConfig, err
 	}
-	localConfig.Config, err = loadConfig[T](configFile)
-	return globalConfig, localConfig, err
+
+	// try reading global config
+	globalConfigFile, globalConfigDir := GetGlobalConfigPath()
+	globalConfig, err := loadConfig[T](globalConfigFile)
+	if err != nil {
+		return ret, err
+	}
+	ret = append(ret, ConfigInfo[T]{
+		Config: globalConfig,
+		Dir:    globalConfigDir,
+	})
+	return ret, nil
 }
 
 func init() {

@@ -66,17 +66,18 @@ func makeWordLists(lists []string, baseDir string) []string {
 }
 
 func listFilter(args []string) error {
-	globalConfig, localConfig, err := wlint.GetAllConfigs[config]()
+	configs, err := wlint.GetAllConfigs[config]()
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
 
 	// if nothing was provided via cli, check configs
 	if len(wordLists) == 0 {
-		if len(localConfig.Config.WordFilterConfig.WordListFiles) != 0 {
-			wordLists = makeWordLists(localConfig.Config.WordFilterConfig.WordListFiles, localConfig.Dir)
-		} else {
-			wordLists = makeWordLists(globalConfig.Config.WordFilterConfig.WordListFiles, globalConfig.Dir)
+		for index := range configs {
+			if len(configs[index].Config.WordFilterConfig.WordListFiles) != 0 {
+				wordLists = makeWordLists(configs[index].Config.WordFilterConfig.WordListFiles, configs[index].Dir)
+				break
+			}
 		}
 	}
 
