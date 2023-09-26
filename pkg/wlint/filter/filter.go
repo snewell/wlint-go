@@ -3,9 +3,6 @@ package filter
 import (
 	"fmt"
 	"io"
-	"os"
-	"path"
-	"regexp"
 
 	"github.com/spf13/cobra"
 
@@ -14,8 +11,7 @@ import (
 )
 
 var (
-	errNoWordlists error = fmt.Errorf("no word lists provided")
-	errNoWords     error = fmt.Errorf("no words in filter list")
+	errNoWords error = fmt.Errorf("no words in filter list")
 
 	caseSensitive bool
 	wordLists     []string
@@ -38,56 +34,20 @@ type config struct {
 	WordFilterConfig wordFilterConfig `yaml:"word_filter"`
 }
 
-func loadWordList(filename string) ([]string, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	ret := []string{}
-	err = wlint.Linify(f, func(line string, count int) error {
-		if len(line) > 0 && line[0] != '#' {
-			ret = append(ret, string(line))
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
-}
-
-func makeWordLists(lists []string, baseDir string) []string {
-	ret := make([]string, len(lists))
-	for index := range lists {
-		ret[index] = path.Join(baseDir, lists[index])
-	}
-	return ret
-}
-
 func listFilter(args []string) error {
 	configs, err := wlint.GetAllConfigs[config]()
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
 
-	// if nothing was provided via cli, check configs
-	if len(wordLists) == 0 {
-		for index := range configs {
-			if len(configs[index].Config.WordFilterConfig.WordListFiles) != 0 {
-				wordLists = makeWordLists(configs[index].Config.WordFilterConfig.WordListFiles, configs[index].Dir)
-				break
-			}
-		}
-	}
-
-	if len(wordLists) == 0 {
-		return errNoWordlists
+	wordFiles, err := buildWordFilesList(wordLists, configs)
+	if err != nil {
+		return err
 	}
 
 	totalWordList := []string{}
-	for index := range wordLists {
-		wordList, err := loadWordList(wordLists[index])
+	for index := range wordFiles {
+		wordList, err := loadWordList(wordFiles[index])
 		if err != nil {
 			return err
 		}
@@ -97,13 +57,9 @@ func listFilter(args []string) error {
 		return errNoWords
 	}
 
-	patternList := []*regexp.Regexp{}
-	for index := range totalWordList {
-		pattern, err := buildRegex(totalWordList[index], caseSensitive)
-		if err != nil {
-			return err
-		}
-		patternList = append(patternList, pattern)
+	patternList, err := buildAllRegex(totalWordList, caseSensitive)
+	if err != nil {
+		return err
 	}
 	err = wlint.FilesOrStdin(args, func(r io.Reader) error {
 		return wlint.Linify(r, func(line string, count int) error {

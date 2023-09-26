@@ -5,6 +5,29 @@ import (
 	"regexp"
 )
 
+func buildAllRegex(wordList []string, caseSensitive bool) ([]*regexp.Regexp, error) {
+	// use a set so that we can remove duplicates
+	patterns := map[string]*regexp.Regexp{}
+	for _, word := range wordList {
+		if _, found := patterns[word]; !found {
+			pattern, err := buildRegex(word, caseSensitive)
+			if err != nil {
+				return nil, err
+			}
+			patterns[word] = pattern
+		}
+	}
+
+	// copy set into a slice
+	ret := make([]*regexp.Regexp, len(patterns))
+	index := 0
+	for _, pattern := range patterns {
+		ret[index] = pattern
+		index++
+	}
+	return ret, nil
+}
+
 func buildRegex(pattern string, caseSensitive bool) (*regexp.Regexp, error) {
 	if caseSensitive {
 		return regexp.Compile(fmt.Sprintf(`\b(%v)\b`, pattern))

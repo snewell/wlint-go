@@ -118,3 +118,32 @@ func TestCaseInsensitiveRegexMultiHit(t *testing.T) {
 	}
 	compareHits(t, hits, expected)
 }
+
+func TestBuildSinglePattern(t *testing.T) {
+	t.Parallel()
+
+	words := []string{"hello"}
+	patterns, err := buildAllRegex(words, true)
+	if err != nil {
+		t.Errorf("Unepxected error: %v", err)
+	}
+	if len(words) != len(patterns) {
+		t.Errorf("Mismatch between pattern size and inputs (%v vs %v)", len(words), len(patterns))
+	}
+}
+
+func TestBuildDuplicatePattern(t *testing.T) {
+	t.Parallel()
+
+	words := []string{
+		"hello",
+		"hello",
+	}
+	patterns, err := buildAllRegex(words, true)
+	if err != nil {
+		t.Errorf("Unepxected error: %v", err)
+	}
+	if len(patterns) != 1 {
+		t.Errorf("Unexpected size for paterns (%v vs 1)", len(words))
+	}
+}
