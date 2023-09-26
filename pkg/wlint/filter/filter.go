@@ -8,7 +8,6 @@ import (
 	"regexp"
 
 	"github.com/spf13/cobra"
-	// "gopkg.in/yaml.v3"
 
 	"github.com/snewell/wlint-go/cmd"
 	"github.com/snewell/wlint-go/internal/wlint"
@@ -22,7 +21,7 @@ var (
 	wordLists     []string
 
 	listFilterCmd = &cobra.Command{
-		Use:   "list-filter",
+		Use:   "word-filter",
 		Short: "Identify filter words",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return listFilter(args)
@@ -30,10 +29,13 @@ var (
 	}
 )
 
-type config struct {
-	wlint.Config `yaml:",inline"`
-
+type wordFilterConfig struct {
 	WordListFiles []string `yaml:"word_files"`
+}
+
+type config struct {
+	wlint.Config     `yaml:",inline"`
+	WordFilterConfig wordFilterConfig `yaml:"word_filter"`
 }
 
 func loadWordList(filename string) ([]string, error) {
@@ -71,10 +73,10 @@ func listFilter(args []string) error {
 
 	// if nothing was provided via cli, check configs
 	if len(wordLists) == 0 {
-		if len(localConfig.Config.WordListFiles) != 0 {
-			wordLists = makeWordLists(localConfig.Config.WordListFiles, localConfig.Dir)
+		if len(localConfig.Config.WordFilterConfig.WordListFiles) != 0 {
+			wordLists = makeWordLists(localConfig.Config.WordFilterConfig.WordListFiles, localConfig.Dir)
 		} else {
-			wordLists = makeWordLists(globalConfig.Config.WordListFiles, globalConfig.Dir)
+			wordLists = makeWordLists(globalConfig.Config.WordFilterConfig.WordListFiles, globalConfig.Dir)
 		}
 	}
 
