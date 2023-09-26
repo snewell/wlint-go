@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"regexp"
 
 	"github.com/spf13/cobra"
+	// "gopkg.in/yaml.v3"
 
 	"github.com/snewell/wlint-go/cmd"
 	"github.com/snewell/wlint-go/internal/wlint"
 )
 
 var (
+	errNoWordlists error = fmt.Errorf("no word lists provided")
+	errNoWords     error = fmt.Errorf("no words in filter list")
+
 	caseSensitive bool
 	wordLists     []string
 
@@ -24,6 +29,12 @@ var (
 		},
 	}
 )
+
+type config struct {
+	wlint.Config `yaml:",inline"`
+
+	WordListFiles []string `yaml:"word_files"`
+}
 
 func loadWordList(filename string) ([]string, error) {
 	f, err := os.Open(filename)
@@ -44,7 +55,33 @@ func loadWordList(filename string) ([]string, error) {
 	return ret, nil
 }
 
+func makeWordLists(lists []string, baseDir string) []string {
+	ret := make([]string, len(lists))
+	for index := range lists {
+		ret[index] = path.Join(baseDir, lists[index])
+	}
+	return ret
+}
+
 func listFilter(args []string) error {
+	globalConfig, localConfig, err := wlint.GetAllConfigs[config]()
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+	}
+
+	// if nothing was provided via cli, check configs
+	if len(wordLists) == 0 {
+		if len(localConfig.Config.WordListFiles) != 0 {
+			wordLists = makeWordLists(localConfig.Config.WordListFiles, localConfig.Dir)
+		} else {
+			wordLists = makeWordLists(globalConfig.Config.WordListFiles, globalConfig.Dir)
+		}
+	}
+
+	if len(wordLists) == 0 {
+		return errNoWordlists
+	}
+
 	totalWordList := []string{}
 	for index := range wordLists {
 		wordList, err := loadWordList(wordLists[index])
@@ -53,6 +90,10 @@ func listFilter(args []string) error {
 		}
 		totalWordList = append(totalWordList, wordList...)
 	}
+	if len(totalWordList) == 0 {
+		return errNoWords
+	}
+
 	patternList := []*regexp.Regexp{}
 	for index := range totalWordList {
 		pattern, err := buildRegex(totalWordList[index], caseSensitive)
@@ -61,7 +102,7 @@ func listFilter(args []string) error {
 		}
 		patternList = append(patternList, pattern)
 	}
-	err := wlint.FilesOrStdin(args, func(r io.Reader) error {
+	err = wlint.FilesOrStdin(args, func(r io.Reader) error {
 		return wlint.Linify(r, func(line string, count int) error {
 			for index := range patternList {
 				matches := getRegexHits(patternList[index], line)
