@@ -14,27 +14,23 @@ var (
 	errNoWordLists error = fmt.Errorf("no word lists provided")
 )
 
-func readWords(reader io.Reader) ([]string, error) {
-	ret := []string{}
-	err := wlint.Linify(reader, func(line string, count int) error {
-		if len(line) > 0 && line[0] != '#' {
-			ret = append(ret, string(strings.TrimSpace(line)))
+func readWords(reader io.Reader, wordFn func(string) error) error {
+	return wlint.Linify(reader, func(line string, count int) error {
+		word := strings.TrimSpace(line)
+		if len(word) > 0 && word[0] != '#' {
+			return wordFn(word)
 		}
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
 }
 
-func loadWordList(filename string) ([]string, error) {
+func loadWordList(filename string, wordFn func(string) error) error {
 	f, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer f.Close()
-	return readWords(f)
+	return readWords(f, wordFn)
 }
 
 func makeWordLists(lists []string, baseDir string) []string {

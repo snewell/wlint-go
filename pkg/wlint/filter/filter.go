@@ -45,29 +45,26 @@ func listFilter(args []string) error {
 		return err
 	}
 
-	totalWordList := []string{}
+	pb := newPatternsBuilder()
 	for index := range wordFiles {
-		wordList, err := loadWordList(wordFiles[index])
+		err := loadWordList(wordFiles[index], func(word string) error {
+			return pb.add(word, caseSensitive)
+		})
 		if err != nil {
 			return err
 		}
-		totalWordList = append(totalWordList, wordList...)
 	}
-	if len(totalWordList) == 0 {
+	if len(pb.patterns) == 0 {
 		return errNoWords
 	}
 
-	patternList, err := buildAllRegex(totalWordList, caseSensitive)
-	if err != nil {
-		return err
-	}
 	err = wlint.FilesOrStdin(args, func(r io.Reader) error {
 		return wlint.Linify(r, func(line string, count int) error {
-			for index := range patternList {
-				matches := getRegexHits(patternList[index], line)
-				for matchIndex := range matches {
-					fmt.Printf("%v\t%v:%v\n", matches[matchIndex].match, count, matches[matchIndex].index)
-				}
+			for _, pattern := range pb.patterns {
+				getRegexHits(pattern, line, func(pm patternMatch) error {
+					fmt.Printf("%v\t%v:%v\n", pm.match, count, pm.index)
+					return nil
+				})
 			}
 			return nil
 		})

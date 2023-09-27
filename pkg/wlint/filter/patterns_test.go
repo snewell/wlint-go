@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -26,7 +27,14 @@ func TestCaseSensitiveRegexHit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	hits := getRegexHits(r, "hello world")
+	hits := []patternMatch{}
+	err = getRegexHits(r, "hello world", func(pm patternMatch) error {
+		hits = append(hits, pm)
+		return nil
+	})
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 	expected := []patternMatch{
 		{
 			match: "hello",
@@ -43,9 +51,13 @@ func TestInnerHit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	hits := getRegexHits(r, "hello")
-	expected := []patternMatch{}
-	compareHits(t, hits, expected)
+	errShouldntHit := fmt.Errorf("shouldn't hit")
+	err = getRegexHits(r, "hello", func(pm patternMatch) error {
+		return errShouldntHit
+	})
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 }
 
 func TestCaseSensitiveRegexMultiHit(t *testing.T) {
@@ -55,7 +67,14 @@ func TestCaseSensitiveRegexMultiHit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	hits := getRegexHits(r, "hello hello world")
+	hits := []patternMatch{}
+	err = getRegexHits(r, "hello hello world", func(pm patternMatch) error {
+		hits = append(hits, pm)
+		return nil
+	})
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 	expected := []patternMatch{
 		{
 			match: "hello",
@@ -76,9 +95,13 @@ func TestCaseSensitiveRegexMiss(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	hits := getRegexHits(r, "Hello World")
-	expected := []patternMatch{}
-	compareHits(t, hits, expected)
+	errShouldntHit := fmt.Errorf("shouldn't be hit")
+	err = getRegexHits(r, "Hello World", func(patternMatch) error {
+		return errShouldntHit
+	})
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 }
 
 func TestCaseInsensitiveRegexHit(t *testing.T) {
@@ -88,7 +111,14 @@ func TestCaseInsensitiveRegexHit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	hits := getRegexHits(r, "Hello World")
+	hits := []patternMatch{}
+	err = getRegexHits(r, "Hello World", func(pm patternMatch) error {
+		hits = append(hits, pm)
+		return nil
+	})
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 	expected := []patternMatch{
 		{
 			match: "Hello",
@@ -105,7 +135,14 @@ func TestCaseInsensitiveRegexMultiHit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	hits := getRegexHits(r, "hElLo HeLlO world")
+	hits := []patternMatch{}
+	err = getRegexHits(r, "hElLo HeLlO world", func(pm patternMatch) error {
+		hits = append(hits, pm)
+		return nil
+	})
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 	expected := []patternMatch{
 		{
 			match: "hElLo",
@@ -122,13 +159,13 @@ func TestCaseInsensitiveRegexMultiHit(t *testing.T) {
 func TestBuildSinglePattern(t *testing.T) {
 	t.Parallel()
 
-	words := []string{"hello"}
-	patterns, err := buildAllRegex(words, true)
+	pb := newPatternsBuilder()
+	err := pb.add("hello", true)
 	if err != nil {
 		t.Errorf("Unepxected error: %v", err)
 	}
-	if len(words) != len(patterns) {
-		t.Errorf("Mismatch between pattern size and inputs (%v vs %v)", len(words), len(patterns))
+	if len(pb.patterns) != 1 {
+		t.Errorf("Mismatch between pattern size and inputs (%v vs 1)", len(pb.patterns))
 	}
 }
 
@@ -139,11 +176,15 @@ func TestBuildDuplicatePattern(t *testing.T) {
 		"hello",
 		"hello",
 	}
-	patterns, err := buildAllRegex(words, true)
-	if err != nil {
-		t.Errorf("Unepxected error: %v", err)
+	pb := newPatternsBuilder()
+	for _, word := range words {
+		err := pb.add(word, true)
+		if err != nil {
+
+			t.Errorf("Unepxected error: %v", err)
+		}
 	}
-	if len(patterns) != 1 {
+	if len(pb.patterns) != 1 {
 		t.Errorf("Unexpected size for paterns (%v vs 1)", len(words))
 	}
 }

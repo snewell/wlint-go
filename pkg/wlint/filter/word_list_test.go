@@ -31,11 +31,15 @@ func TestReadWords(t *testing.T) {
 		"world",
 	}
 	reader := bytes.NewReader([]byte(strings.Join(words, "\n")))
-	readWords, err := readWords(reader)
+	actualWords := []string{}
+	err := readWords(reader, func(word string) error {
+		actualWords = append(actualWords, word)
+		return nil
+	})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	checkWordList(t, readWords, words)
+	checkWordList(t, actualWords, words)
 }
 
 func TestReadExtraSpaces(t *testing.T) {
@@ -46,7 +50,11 @@ func TestReadExtraSpaces(t *testing.T) {
 		"world  ",
 	}
 	reader := bytes.NewReader([]byte(strings.Join(words, "\n")))
-	readWords, err := readWords(reader)
+	actualWords := []string{}
+	err := readWords(reader, func(word string) error {
+		actualWords = append(actualWords, word)
+		return nil
+	})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -54,7 +62,7 @@ func TestReadExtraSpaces(t *testing.T) {
 		"hello",
 		"world",
 	}
-	checkWordList(t, readWords, expected)
+	checkWordList(t, actualWords, expected)
 }
 
 func TestReadEmptyLines(t *testing.T) {
@@ -66,7 +74,11 @@ func TestReadEmptyLines(t *testing.T) {
 		"world",
 	}
 	reader := bytes.NewReader([]byte(strings.Join(words, "\n")))
-	readWords, err := readWords(reader)
+	actualWords := []string{}
+	err := readWords(reader, func(word string) error {
+		actualWords = append(actualWords, word)
+		return nil
+	})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -74,7 +86,7 @@ func TestReadEmptyLines(t *testing.T) {
 		"hello",
 		"world",
 	}
-	checkWordList(t, readWords, expected)
+	checkWordList(t, actualWords, expected)
 }
 
 func TestReadCommentLines(t *testing.T) {
@@ -86,7 +98,11 @@ func TestReadCommentLines(t *testing.T) {
 		"world",
 	}
 	reader := bytes.NewReader([]byte(strings.Join(words, "\n")))
-	readWords, err := readWords(reader)
+	actualWords := []string{}
+	err := readWords(reader, func(word string) error {
+		actualWords = append(actualWords, word)
+		return nil
+	})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -94,7 +110,7 @@ func TestReadCommentLines(t *testing.T) {
 		"hello",
 		"world",
 	}
-	checkWordList(t, readWords, expected)
+	checkWordList(t, actualWords, expected)
 }
 
 func TestCliWordFiles(t *testing.T) {
