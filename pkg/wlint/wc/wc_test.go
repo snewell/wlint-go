@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func validateTotalCount(t *testing.T, counts map[string]int, expectedTotal int) {
+func validateTotalCount(t *testing.T, wc *wordCounter) {
 	totalCount := 0
-	for word, count := range counts {
+	for word, count := range wc.counts {
 		totalCount += count
 		if count < 1 {
 			t.Errorf("%v has an invalid count (%v)", word, count)
 		}
 	}
-	if totalCount != expectedTotal {
-		t.Errorf("Counts don't match expected total (%v vs %v)", totalCount, expectedTotal)
+	if totalCount != wc.totalCount {
+		t.Errorf("Counts don't match expected total (%v vs %v)", totalCount, wc.totalCount)
 	}
 }
 
@@ -38,19 +38,23 @@ func TestCountEmpty(t *testing.T) {
 	t.Parallel()
 
 	reader := bytes.NewReader([]byte{})
-	counts, total, err := countWords(reader, identityString)
+	counter := makeWordCounter(identityString)
+	err := countWords(&counter, reader)
 	if err != nil {
 		t.Errorf("Unexpected errors")
 	}
-	if len(counts) != 0 {
+	if len(counter.counts) != 0 {
 		t.Errorf("Word counts isn't empty")
 	}
-	validateTotalCount(t, counts, total)
+	validateTotalCount(t, &counter)
 }
 
 func TestCountSensitive(t *testing.T) {
+	t.Parallel()
+
 	reader := bytes.NewReader([]byte("foo FOO"))
-	counts, total, err := countWords(reader, identityString)
+	counter := makeWordCounter(identityString)
+	err := countWords(&counter, reader)
 	if err != nil {
 		t.Errorf("Unexpected errors")
 	}
@@ -58,21 +62,22 @@ func TestCountSensitive(t *testing.T) {
 		"foo": 1,
 		"FOO": 1,
 	}
-	validateExpectedCounts(t, counts, expected)
-	validateTotalCount(t, counts, total)
+	validateExpectedCounts(t, counter.counts, expected)
+	validateTotalCount(t, &counter)
 }
 
 func TestCountInsensitive(t *testing.T) {
 	t.Parallel()
 
 	reader := bytes.NewReader([]byte("foo FOO"))
-	counts, total, err := countWords(reader, strings.ToLower)
+	counter := makeWordCounter(strings.ToLower)
+	err := countWords(&counter, reader)
 	if err != nil {
 		t.Errorf("Unexpected errors")
 	}
 	expected := map[string]int{
 		"foo": 2,
 	}
-	validateExpectedCounts(t, counts, expected)
-	validateTotalCount(t, counts, total)
+	validateExpectedCounts(t, counter.counts, expected)
+	validateTotalCount(t, &counter)
 }

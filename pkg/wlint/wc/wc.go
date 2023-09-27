@@ -24,29 +24,36 @@ var (
 	}
 )
 
+type mapFn func(string) string
+
+type wordCounter struct {
+	counts     map[string]int
+	wordMapFn  mapFn
+	totalCount int
+}
+
+func makeWordCounter(fn mapFn) wordCounter {
+	return wordCounter{
+		counts:    map[string]int{},
+		wordMapFn: fn,
+	}
+}
+
+func (wc *wordCounter) add(word string) {
+	actualWord := wc.wordMapFn(word)
+	wc.counts[actualWord]++
+	wc.totalCount++
+}
+
 func identityString(s string) string {
 	return s
 }
 
-func countWords(r io.Reader, mapFn func(string) string) (map[string]int, int, error) {
-	ret := map[string]int{}
-	totalCount := 0
-	err := wlint.Wordify(r, func(word string) error {
-		ret[mapFn(word)]++
-		totalCount++
+func countWords(wc *wordCounter, r io.Reader) error {
+	return wlint.Wordify(r, func(word string) error {
+		wc.add(word)
 		return nil
 	})
-	if err != nil {
-		return nil, 0, err
-	} else {
-		return ret, totalCount, nil
-	}
-}
-
-func combineCounts(lhs *map[string]int, rhs *map[string]int) {
-	for word, count := range *rhs {
-		(*lhs)[word] += count
-	}
 }
 
 func countWordsCmd(args []string) error {
@@ -56,25 +63,23 @@ func countWordsCmd(args []string) error {
 		mapFn = strings.ToLower
 	}
 
-	totalWords := map[string]int{}
-	totalCount := 0
+	counter := makeWordCounter(mapFn)
 	err := wlint.FilesOrStdin(args, func(r io.Reader) error {
-		counts, localCount, err := countWords(r, mapFn)
-		if err != nil {
-			return err
-		}
-		combineCounts(&totalWords, &counts)
-		totalCount += localCount
-		return nil
+		return countWords(&counter, r)
 	})
+	if err != nil {
+		return err
+	}
 
-	keys := []string{}
-	for word := range totalWords {
-		keys = append(keys, word)
+	keys := make([]string, len(counter.counts))
+	index := 0
+	for word := range counter.counts {
+		keys[index] = word
+		index++
 	}
 	sort.Strings(keys)
 	for _, word := range keys {
-		fmt.Printf("%v\t%v\n", word, totalWords[word])
+		fmt.Printf("%v\t%v\n", word, counter.counts[word])
 	}
 	return err
 }
