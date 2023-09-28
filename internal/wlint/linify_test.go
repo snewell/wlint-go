@@ -14,7 +14,7 @@ func TestEmptyLinify(t *testing.T) {
 
 	errShouldntHit := fmt.Errorf("shouldn't have been hit")
 	reader := bytes.NewReader([]byte(strings.Join(lines, "\n")))
-	err := Linify(reader, func(string, int) error {
+	err := Linify(reader, func(string, Line) error {
 		return errShouldntHit
 	})
 	if err != nil {
@@ -28,7 +28,7 @@ func TestEmptyLines(t *testing.T) {
 	lines := []string{"", ""}
 
 	reader := bytes.NewReader([]byte(strings.Join(lines, "\n")))
-	err := Linify(reader, func(line string, count int) error {
+	err := Linify(reader, func(line string, count Line) error {
 		if line != lines[count-1] {
 			t.Errorf("Unexpected line content at index %v: %v", count-1, line)
 		}
@@ -45,7 +45,7 @@ func TestNonEmptyLines(t *testing.T) {
 	lines := []string{"1", "2"}
 
 	reader := bytes.NewReader([]byte(strings.Join(lines, "\n")))
-	err := Linify(reader, func(line string, count int) error {
+	err := Linify(reader, func(line string, count Line) error {
 		if line != lines[count-1] {
 			t.Errorf("Unexpected line content at index %v: %v", count-1, line)
 		}

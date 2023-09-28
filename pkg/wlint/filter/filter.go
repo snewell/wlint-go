@@ -59,7 +59,7 @@ func listFilter(args []string) error {
 	}
 
 	err = wlint.FilesOrStdin(args, func(r io.Reader) error {
-		return wlint.Linify(r, func(line string, count int) error {
+		return wlint.Linify(r, func(line string, count wlint.Line) error {
 			for _, pattern := range pb.patterns {
 				getRegexHits(pattern, line, func(pm patternMatch) error {
 					fmt.Printf("%v\t%v:%v\n", pm.match, count, pm.index)

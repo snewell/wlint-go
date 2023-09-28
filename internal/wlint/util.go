@@ -16,6 +16,10 @@ var (
 	wordPattern *regexp.Regexp
 )
 
+type Line int
+
+type Column int
+
 func FilesOrStdin(args []string, readerHandler func(io.Reader) error) error {
 	if len(args) == 0 {
 		return readerHandler(os.Stdin)
@@ -39,9 +43,9 @@ func FilesOrStdin(args []string, readerHandler func(io.Reader) error) error {
 	}
 }
 
-func linifyInternal(reader *bufio.Reader, lineFunc func(string, int) error) error {
+func linifyInternal(reader *bufio.Reader, lineFunc func(string, Line) error) error {
 	fullString := ""
-	lineCount := 1
+	lineCount := Line(1)
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if err == nil {
@@ -62,16 +66,18 @@ func linifyInternal(reader *bufio.Reader, lineFunc func(string, int) error) erro
 	}
 }
 
-func Linify(r io.Reader, lineFunc func(string, int) error) error {
+func Linify(r io.Reader, lineFunc func(string, Line) error) error {
 	return linifyInternal(bufio.NewReader(r), lineFunc)
 }
 
-func Wordify(reader io.Reader, wordFunc func(string) error) error {
-	return Linify(reader, func(line string, count int) error {
-		results := wordPattern.FindAllStringSubmatch(string(line), -1)
-		for index := range results {
-			for _, word := range results[index][1:] {
-				err := wordFunc(word)
+func Wordify(reader io.Reader, wordFunc func(string, Line, Column) error) error {
+	return Linify(reader, func(line string, count Line) error {
+		indexes := wordPattern.FindAllStringIndex(string(line), -1)
+		if len(indexes) != 0 {
+			for index := range indexes {
+				lhs := indexes[index][0]
+				rhs := indexes[index][1]
+				err := wordFunc(line[lhs:rhs], count, Column(lhs+1))
 				if err != nil {
 					return err
 				}

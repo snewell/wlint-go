@@ -15,7 +15,7 @@ var (
 )
 
 func readWords(reader io.Reader, wordFn func(string) error) error {
-	return wlint.Linify(reader, func(line string, count int) error {
+	return wlint.Linify(reader, func(line string, count wlint.Line) error {
 		word := strings.TrimSpace(line)
 		if len(word) > 0 && word[0] != '#' {
 			return wordFn(word)

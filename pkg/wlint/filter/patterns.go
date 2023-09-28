@@ -42,10 +42,11 @@ type patternMatch struct {
 func getRegexHits(pattern *regexp.Regexp, text string, matchFn func(patternMatch) error) error {
 	indexes := pattern.FindAllStringIndex(text, -1)
 	if len(indexes) > 0 {
-		matches := pattern.FindAllStringSubmatch(text, -1)
 		for index := range indexes {
+			lhs := indexes[index][0]
+			rhs := indexes[index][1]
 			err := matchFn(patternMatch{
-				match: matches[index][0],
+				match: text[lhs:rhs],
 				index: indexes[index][0],
 			})
 			if err != nil {

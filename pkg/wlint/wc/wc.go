@@ -50,7 +50,7 @@ func identityString(s string) string {
 }
 
 func countWords(wc *wordCounter, r io.Reader) error {
-	return wlint.Wordify(r, func(word string) error {
+	return wlint.Wordify(r, func(word string, line wlint.Line, column wlint.Column) error {
 		wc.add(word)
 		return nil
 	})
