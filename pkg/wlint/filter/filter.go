@@ -40,6 +40,10 @@ func listFilter(args []string) error {
 		fmt.Printf("Error: %v", err)
 	}
 
+	makePurifier, err := wlint.FindPurifier(cmd.Purifier, configs)
+	if err != nil {
+		return err
+	}
 	wordFiles, err := buildWordFilesList(wordLists, configs)
 	if err != nil {
 		return err
@@ -59,7 +63,11 @@ func listFilter(args []string) error {
 	}
 
 	err = wlint.FilesOrStdin(args, func(r io.Reader) error {
-		return wlint.Linify(r, func(line string, count wlint.Line) error {
+		purifier, err := makePurifier(r)
+		if err != nil {
+			return err
+		}
+		return purifier.Linify(func(line string, count wlint.Line) error {
 			for _, pattern := range pb.patterns {
 				getRegexHits(pattern, line, func(pm patternMatch) error {
 					fmt.Printf("%v\t%v:%v\n", pm.match, count, pm.index)
@@ -73,6 +81,7 @@ func listFilter(args []string) error {
 }
 
 func init() {
+	cmd.AddCommonFlags(listFilterCmd)
 	listFilterCmd.PersistentFlags().BoolVarP(&caseSensitive, "case-sensitive", "s", false, "Treat text as case sensitive")
 	listFilterCmd.PersistentFlags().StringSliceVarP(&wordLists, "word-list", "w", []string{}, "File to load word list from")
 	cmd.AddCommand(listFilterCmd)

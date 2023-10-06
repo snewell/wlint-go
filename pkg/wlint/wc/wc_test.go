@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/snewell/wlint-go/internal/wlint"
 )
 
 func validateTotalCount(t *testing.T, wc *wordCounter) {
@@ -39,7 +41,9 @@ func TestCountEmpty(t *testing.T) {
 
 	reader := bytes.NewReader([]byte{})
 	counter := makeWordCounter(identityString)
-	err := countWords(&counter, reader)
+	err := countWords(&counter, wlint.NullPurifier{
+		R: reader,
+	})
 	if err != nil {
 		t.Errorf("Unexpected errors")
 	}
@@ -54,7 +58,9 @@ func TestCountSensitive(t *testing.T) {
 
 	reader := bytes.NewReader([]byte("foo FOO"))
 	counter := makeWordCounter(identityString)
-	err := countWords(&counter, reader)
+	err := countWords(&counter, wlint.NullPurifier{
+		R: reader,
+	})
 	if err != nil {
 		t.Errorf("Unexpected errors")
 	}
@@ -71,7 +77,9 @@ func TestCountInsensitive(t *testing.T) {
 
 	reader := bytes.NewReader([]byte("foo FOO"))
 	counter := makeWordCounter(strings.ToLower)
-	err := countWords(&counter, reader)
+	err := countWords(&counter, wlint.NullPurifier{
+		R: reader,
+	})
 	if err != nil {
 		t.Errorf("Unexpected errors")
 	}

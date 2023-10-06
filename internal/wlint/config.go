@@ -14,7 +14,16 @@ var (
 	homedir string
 )
 
+type StandardConfig interface {
+	GetPurifier() string
+}
+
 type Config struct {
+	Purifier string `yaml:"purifier"`
+}
+
+func (c Config) GetPurifier() string {
+	return c.Purifier
 }
 
 func GetGlobalConfigPath() (string, string) {
@@ -98,6 +107,19 @@ func GetAllConfigs[T any]() ([]ConfigInfo[T], error) {
 		Dir:    globalConfigDir,
 	})
 	return ret, nil
+}
+
+func FindPurifier[T StandardConfig](cliPurifier string, configs []ConfigInfo[T]) (MakePurifierFn, error) {
+	if len(cliPurifier) != 0 {
+		return GetPurifier(cliPurifier)
+	}
+	for index := range configs {
+		purifier := configs[index].Config.GetPurifier()
+		if len(purifier) != 0 {
+			return GetPurifier(purifier)
+		}
+	}
+	return nil, nil
 }
 
 func init() {

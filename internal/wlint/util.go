@@ -72,19 +72,25 @@ func Linify(r io.Reader, lineFunc func(string, Line) error) error {
 
 func Wordify(reader io.Reader, wordFunc func(string, Line, Column) error) error {
 	return Linify(reader, func(line string, count Line) error {
-		indexes := wordPattern.FindAllStringIndex(string(line), -1)
-		if len(indexes) != 0 {
-			for index := range indexes {
-				lhs := indexes[index][0]
-				rhs := indexes[index][1]
-				err := wordFunc(line[lhs:rhs], count, Column(lhs+1))
-				if err != nil {
-					return err
-				}
+		return WordifyString(line, func(word string, column Column) error {
+			return wordFunc(word, count, column)
+		})
+	})
+}
+
+func WordifyString(text string, wordFunc func(string, Column) error) error {
+	indexes := wordPattern.FindAllStringIndex(string(text), -1)
+	if len(indexes) != 0 {
+		for index := range indexes {
+			lhs := indexes[index][0]
+			rhs := indexes[index][1]
+			err := wordFunc(text[lhs:rhs], Column(lhs+1))
+			if err != nil {
+				return err
 			}
 		}
-		return nil
-	})
+	}
+	return nil
 }
 
 func init() {

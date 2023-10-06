@@ -49,14 +49,24 @@ func identityString(s string) string {
 	return s
 }
 
-func countWords(wc *wordCounter, r io.Reader) error {
-	return wlint.Wordify(r, func(word string, line wlint.Line, column wlint.Column) error {
+func countWords(wc *wordCounter, purifier wlint.Purifier) error {
+	return purifier.Wordify(func(word string, line wlint.Line, column wlint.Column) error {
 		wc.add(word)
 		return nil
 	})
 }
 
 func countWordsCmd(args []string) error {
+	configs, err := wlint.GetAllConfigs[wlint.Config]()
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+	}
+
+	makePurifier, err := wlint.FindPurifier(cmd.Purifier, configs)
+	if err != nil {
+		return err
+	}
+
 	// start with the identity string
 	mapFn := identityString
 	if caseSensitive {
@@ -64,8 +74,12 @@ func countWordsCmd(args []string) error {
 	}
 
 	counter := makeWordCounter(mapFn)
-	err := wlint.FilesOrStdin(args, func(r io.Reader) error {
-		return countWords(&counter, r)
+	err = wlint.FilesOrStdin(args, func(r io.Reader) error {
+		purifier, err := makePurifier(r)
+		if err != nil {
+			return err
+		}
+		return countWords(&counter, purifier)
 	})
 	if err != nil {
 		return err
@@ -85,6 +99,7 @@ func countWordsCmd(args []string) error {
 }
 
 func init() {
+	cmd.AddCommonFlags(wordCountCmd)
 	wordCountCmd.PersistentFlags().BoolVarP(&caseSensitive, "case-sensitive", "s", false, "Treat words as case sensitive")
 	cmd.AddCommand(wordCountCmd)
 }
