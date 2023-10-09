@@ -69,7 +69,7 @@ func countWordsCmd(args []string) error {
 
 	// start with the identity string
 	mapFn := identityString
-	if caseSensitive {
+	if !caseSensitive {
 		mapFn = strings.ToLower
 	}
 
